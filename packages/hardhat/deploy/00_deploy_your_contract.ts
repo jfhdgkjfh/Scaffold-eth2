@@ -35,6 +35,18 @@ const deployYourContract: DeployFunction = async function (hre: HardhatRuntimeEn
   // Get the deployed contract to interact with it after deploying.
   const yourContract = await hre.ethers.getContract<Contract>("YourContract", deployer);
   console.log("👋 Initial greeting:", await yourContract.greeting());
+
+  // Create a new bill
+  const billId = await yourContract.createBill(deployer, 1000); // Example: 1000 wei
+  console.log(`📜 Created bill with ID ${billId}`);
+
+  // Pay the created bill
+  await yourContract.payBill(billId, { value: 1000 }); // Same amount as above
+  console.log(`✅ Paid bill with ID ${billId}`);
+
+  // Verify the bill status
+  const bill = await yourContract.getBillStatus(billId);
+  console.log(`🧾 Bill Status: ${JSON.stringify(bill)}`);
 };
 
 export default deployYourContract;
