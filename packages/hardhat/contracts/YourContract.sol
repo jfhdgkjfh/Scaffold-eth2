@@ -19,9 +19,23 @@ contract YourContract {
     bool public premium = false;
     uint256 public totalCounter = 0;
     mapping(address => uint) public userGreetingCounter;
+    
+    // Additions for bill payment functionality
+    struct Bill {
+        uint id;             // Unique ID for each bill
+        address payer;       // Address of the person who needs to pay the bill
+        uint amount;         // Amount due for this bill
+        bool paid;           // Whether the bill has been paid
+        uint timestamp;      // Timestamp of creation
+    }
+    
+    uint private nextBillId = 1;   // Counter for generating unique IDs
+    mapping(uint => Bill) private bills;  // Mapping of bill IDs to their details
 
     // Events: a way to emit log statements from smart contract that can be listened to by external parties
     event GreetingChange(address indexed greetingSetter, string newGreeting, bool premium, uint256 value);
+    event BillCreated(uint indexed billId, address indexed payer, uint amount, uint timestamp);
+    event BillPaid(uint indexed billId, address indexed payer, uint amount, uint timestamp);
 
     // Constructor: Called once on contract deployment
     // Check packages/hardhat/deploy/00_deploy_your_contract.ts
@@ -75,4 +89,49 @@ contract YourContract {
      * Function that allows the contract to receive ETH
      */
     receive() external payable {}
+
+    // New Functions for Bill Payment
+
+    /**
+     * Create a new bill
+     *
+     * @param _payer (address) - Address of the person who needs to pay the bill
+     * @param _amount (uint) - Amount due for this bill
+     */
+    function createBill(address _payer, uint _amount) public returns (uint billId) {
+        require(_amount > 0, "Amount must be greater than zero.");
+        
+        billId = nextBillId++;
+        bills[billId] = Bill(billId, _payer, _amount, false, block.timestamp);
+        
+        emit BillCreated(billId, _payer, _amount, block.timestamp);
+        
+        return billId;
+    }
+
+    /**
+     * Pay a bill
+     *
+     * @param _billId (uint) - ID of the bill to be paid
+     */
+    function payBill(uint _billId) public payable {
+        Bill storage bill = bills[_billId];
+        require(bill.payer == msg.sender, "Only the payer can pay the bill.");
+        require(!bill.paid, "The bill has already been paid.");
+        require(msg.value >= bill.amount, "Insufficient funds to pay the bill.");
+        
+        bill.paid = true;
+        
+        emit BillPaid(_billId, msg.sender, bill.amount, block.timestamp);
+    }
+
+    /**
+     * Get the status of a bill
+     *
+     * @param _billId (uint) - ID of the bill to check
+     * @return (Bill) - Details of the bill
+     */
+    function getBillStatus(uint _billId) public view returns (Bill memory) {
+        return bills[_billId];
+    }
 }
